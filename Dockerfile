@@ -5,23 +5,26 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install dependencies
 RUN apt-get update \
-    && apt-get install --no-install-recommends -y curl gnupg software-properties-common lsb-release \
-    && sudo apt remove --purge --auto-remove cmake \
-    && sudo apt update \
-    && sudo apt clean all \
-    && wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null \
-    && sudo apt-add-repository "deb https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main" \
-    && sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 6AF7F09730B3F0A4 \
-    && sudo apt update \
-    && sudo apt install kitware-archive-keyring \
-    && sudo rm /etc/apt/trusted.gpg.d/kitware.gpg \
-    && curl -sSL https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - \
+    && apt-get install --no-install-recommends -y curl gnupg software-properties-common lsb-release apt-utils \
+    && apt-get remove --purge --auto-remove cmake \
+    && apt-get update \
+    && apt-get clean all 
+
+RUN curl -sSL https://apt.kitware.com/keys/kitware-archive-latest.asc | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg \
+    && apt-add-repository "deb https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main" \
+    && apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 6AF7F09730B3F0A4 \
+    && apt-get update \
+    && apt-get install kitware-archive-keyring \
+    && rm /etc/apt/trusted.gpg.d/kitware.gpg
+
+RUN curl -sSL https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - \
     && echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" | tee -a /etc/apt/sources.list \
     && echo "deb-src http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" | tee -a /etc/apt/sources.list \
     && add-apt-repository ppa:ubuntu-toolchain-r/test \
     && apt-get install --no-install-recommends -y \
         gpg zip unzip tar git \
-        pkg-config ninja-build ccache cmake build-essential \
+        pkg-config ninja-build ccache cmake=3.30.* \
+        cmake-data=3.30.* build-essential \
         doctest-dev \
         clang-18 lld-18 \
         python3.11 python3.11-dev \
