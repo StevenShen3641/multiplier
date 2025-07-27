@@ -1,6 +1,12 @@
 ARG IMAGE=ubuntu:22.04
 FROM --platform=linux/amd64 ${IMAGE} as builder
-ENV INSTALL_DIR=/work/install
+ENV WORKSPACE_DIR=/work
+ENV INSTALL_DIR=${WORKSPACE_DIR}/install
+ENV BUILD_DIR=${WORKSPACE_DIR}/build
+ENV SRC_DIR=${WORKSPACE_DIR}/src
+
+ENV DEBIAN_FRONTEND=noninteractive
+
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install dependencies
@@ -17,6 +23,12 @@ RUN curl -sSL https://apt.kitware.com/keys/kitware-archive-latest.asc | gpg --de
     && apt-get install kitware-archive-keyring \
     && rm /etc/apt/trusted.gpg.d/kitware.gpg
 
+RUN apt-get install software-properties-common \
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get install -y python3.12 python3.12-dev python3.12-venv
+
+RUN python3.12 -m venv "${WORKSPACE_DIR}/install"
+
 RUN curl -sSL https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - \
     && echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" | tee -a /etc/apt/sources.list \
     && echo "deb-src http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" | tee -a /etc/apt/sources.list \
@@ -27,28 +39,34 @@ RUN curl -sSL https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - \
         cmake-data=3.30.* build-essential \
         doctest-dev \
         clang-18 lld-18 \
-        python3.11 python3.11-dev \
-    && curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11 \
+    && curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /work
-RUN mkdir src build
+RUN mkdir -p "${BUILD_DIR}"
+RUN mkdir -p "${SRC_DIR}"
+RUN mkdir -p "${INSTALL_DIR}"
 
 COPY . /work/src/multiplier
+
+# Environment
+
+RUN ln -sf "$(which ld.lld-18)" /usr/local/bin/ld.lld
+
 RUN cmake \
-    -S '/work/src/multiplier' \
-    -B '/work/build/multiplier' \
+    -S "${SRC_DIR}/multiplier" \
+    -B "${BUILD_DIR}/multiplier" \
     -G Ninja \
     -DCMAKE_LINKER_TYPE=LLD \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_C_COMPILER="$(which clang-18)" \
     -DCMAKE_CXX_COMPILER="$(which clang++-18)" \
-    -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
-    -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=TRUE
+    -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" 
 
-RUN cmake --build '/work/build/multiplier' --target install
-RUN chmod +x /work/install/bin/*
-ENV PATH="/work/install/bin:${PATH}"
+RUN cmake --build "${BUILD_DIR}/multiplier" --target install
+RUN chmod +x ${WORKSPACE_DIR}/install/bin/*
+ENV PATH="${WORKSPACE_DIR}/install/bin:${PATH}"
 
 FROM --platform=linux/amd64 ${IMAGE} as release
 COPY --from=builder /work/install /work/install
