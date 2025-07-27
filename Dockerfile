@@ -68,5 +68,5 @@ RUN cmake --build "${BUILD_DIR}/multiplier" --target install
 RUN chmod +x ${WORKSPACE_DIR}/install/bin/*
 ENV PATH="${WORKSPACE_DIR}/install/bin:${PATH}"
 
-FROM --platform=linux/amd64 ${IMAGE} as release
-COPY --from=builder /work/install /work/install
+# FROM --platform=linux/amd64 ${IMAGE} as release
+# COPY --from=builder /work/install /work/install
