@@ -61,6 +61,8 @@ RUN chmod +x ${WORKSPACE_DIR}/install/bin/*
 FROM --platform=linux/amd64 ${IMAGE} as release
 RUN apt-get update && \
     apt-get install -yq --no-install-recommends libatomic1
+ENV WORKSPACE_DIR=/work
+ENV INSTALL_DIR=${WORKSPACE_DIR}/install
 COPY --from=builder ${INSTALL_DIR} ${INSTALL_DIR}
 ENV PATH="${INSTALL_DIR}/bin:${PATH}"
 WORKDIR /work
