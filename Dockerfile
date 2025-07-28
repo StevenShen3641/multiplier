@@ -57,7 +57,10 @@ RUN cmake \
 
 RUN cmake --build "${BUILD_DIR}/multiplier" --target install
 RUN chmod +x ${WORKSPACE_DIR}/install/bin/*
-ENV PATH="${WORKSPACE_DIR}/install/bin:${PATH}"
 
 FROM --platform=linux/amd64 ${IMAGE} as release
-COPY --from=builder /work/install /work/install
+RUN apt-get update && \
+    apt-get install -yq --no-install-recommends libatomic1
+COPY --from=builder ${INSTALL_DIR} ${INSTALL_DIR}
+ENV PATH="${INSTALL_DIR}/bin:${PATH}"
+WORKDIR /work
